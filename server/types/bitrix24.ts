@@ -72,6 +72,31 @@ export interface BitrixChecklistItemRaw {
 }
 
 /**
+ * Task-comment wire shape — v2 `task.commentitem.{add,getlist}`. Bitrix24
+ * ships UPPER_SNAKE on the wire; we tolerate camelCase in case the SDK
+ * transforms responses for a future release. `AUTHOR_NAME` is a display
+ * convenience Bitrix24 adds on read (not accepted on `.add`), so it's
+ * optional here. Mention markup inside `POST_MESSAGE` uses Bitrix24's
+ * `[USER=<id>]Name[/USER]` BBCode tag — callers looking for "was I
+ * tagged?" match on that pattern, not on a dedicated field (Bitrix24
+ * doesn't expose one).
+ */
+export interface BitrixTaskCommentRaw {
+  id?: number | string
+  ID?: number | string
+  taskId?: number | string
+  TASK_ID?: number | string
+  authorId?: number | string
+  AUTHOR_ID?: number | string
+  authorName?: string
+  AUTHOR_NAME?: string
+  postMessage?: string
+  POST_MESSAGE?: string
+  postDate?: string | null
+  POST_DATE?: string | null
+}
+
+/**
  * Task-result wire shape — v3 `tasks.task.result.*`. A "result" is a piece
  * of free-form text the operator records as the answer / outcome of a task,
  * separately from the task body and comments. The full Bitrix24 response
@@ -137,4 +162,66 @@ export interface BitrixElapsedTimeRaw {
   DATE_START?: string | null
   dateStop?: string | null
   DATE_STOP?: string | null
+}
+
+/**
+ * Bitrix24 IM (messenger) wire shapes — `im.recent.get` / `im.dialog.messages.get`.
+ * Unlike `tasks.*` / `task.*`, the `im` module ships a SINGLE consistent
+ * `snake_case` casing on the wire (no UPPER_SNAKE, no camelCase variants) —
+ * these types intentionally do NOT use the `pick(lower, upper)` dual-casing
+ * helper from `wire-coerce.ts`; access fields directly.
+ */
+
+/** One row of `im.recent.get` — a dialog (personal, group chat, or task chat). */
+export interface BitrixImRecentRaw {
+  /** Dialog id to pass as `DIALOG_ID` to `im.dialog.messages.get` — numeric
+   *  user id for a personal dialog, `"chat<id>"` for a group / task chat. */
+  id?: number | string
+  chat_id?: number
+  /** `"user"` = personal dialog; `"chat"` = group chat, task chat, or workgroup. */
+  type?: string
+  title?: string
+  message?: {
+    id?: number
+    text?: string
+    author_id?: number
+    date?: string
+  }
+  unread?: boolean
+  counter?: number
+  date_update?: string
+}
+
+/** A Bitrix24 user summary embedded in `im.dialog.messages.get`'s `users` array. */
+export interface BitrixImUserRaw {
+  id?: number | string
+  name?: string
+  first_name?: string
+  last_name?: string
+}
+
+/** One message row from `im.dialog.messages.get`'s `messages` array. */
+export interface BitrixImMessageRaw {
+  id?: number
+  chat_id?: number
+  author_id?: number
+  date?: string
+  text?: string
+}
+
+/** Envelope for `im.dialog.messages.get`. */
+export interface ImDialogMessagesEnvelope {
+  chat_id?: number
+  messages?: BitrixImMessageRaw[]
+  users?: BitrixImUserRaw[]
+}
+
+/**
+ * Envelope for `im.recent.list`. Unlike the older `im.recent.get` (bare
+ * array, `LIMIT` silently ignored on a live-portal check), this one
+ * genuinely paginates — `items` + `hasMore` confirmed against a live portal.
+ */
+export interface ImRecentListEnvelope {
+  items?: BitrixImRecentRaw[]
+  hasMore?: boolean
 }
